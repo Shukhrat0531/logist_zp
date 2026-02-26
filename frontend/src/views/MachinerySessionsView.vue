@@ -79,15 +79,41 @@
         <n-button type="warning" @click="closeSession" :loading="saving">Закрыть смену</n-button>
       </template>
     </n-modal>
+
+    <!-- Edit modal -->
+    <n-modal v-model:show="showEditModal" preset="dialog" title="Редактировать смену" style="width: 500px">
+      <n-form :model="editForm" label-placement="left" label-width="120">
+        <n-form-item label="Оператор">
+          <n-select v-model:value="editForm.operator_id" :options="operatorOptions" filterable />
+        </n-form-item>
+        <n-form-item label="Спецтехника">
+          <n-select v-model:value="editForm.machinery_id" :options="machineryOptions" filterable />
+        </n-form-item>
+        <n-form-item label="Объект">
+          <n-select v-model:value="editForm.buyer_id" :options="buyerOptions" clearable filterable />
+        </n-form-item>
+        <n-form-item label="Тариф (час)">
+          <n-input-number v-model:value="editForm.hourly_rate" :min="0" style="width: 100%" />
+        </n-form-item>
+        <n-form-item label="Примечание">
+          <n-input v-model:value="editForm.notes" type="textarea" :rows="2" />
+        </n-form-item>
+      </n-form>
+      <template #action>
+        <n-button @click="showEditModal = false">Отмена</n-button>
+        <n-button type="primary" @click="saveEditSession" :loading="saving">Сохранить</n-button>
+      </template>
+    </n-modal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, h, reactive, watch } from 'vue'
-import { NDataTable, NButton, NModal, NForm, NFormItem, NInput, NSelect, NDatePicker, NCard, NSpace, NTag, useMessage, NInputNumber } from 'naive-ui'
+import { NDataTable, NButton, NModal, NForm, NFormItem, NInput, NSelect, NDatePicker, NCard, NSpace, NTag, useMessage, useDialog, NInputNumber } from 'naive-ui'
 import api from '../api/client'
 
 const msg = useMessage()
+const dialog = useDialog()
 const sessions = ref<any[]>([])
 const openSessions = ref<any[]>([])
 const loading = ref(false)
@@ -97,6 +123,15 @@ const showCloseModal = ref(false)
 const closingSession = ref<any>(null)
 const closeEndAt = ref(Date.now())
 const closeFuelLiters = ref<number | null>(null)
+const showEditModal = ref(false)
+const editingSession = ref<any>(null)
+const editForm = reactive({
+  operator_id: null as number | null,
+  machinery_id: null as number | null,
+  buyer_id: null as number | null,
+  notes: '',
+  hourly_rate: 0,
+})
 
 const operatorOptions = ref<any[]>([])
 const machineryOptions = ref<any[]>([])
@@ -127,7 +162,7 @@ function statusTag(status: string) {
 }
 
 const columns = [
-  { title: 'ID', key: 'id', width: 50 },
+  { title: '№', key: 'index', width: 50, render: (_: any, index: number) => index + 1 },
   { title: 'Дата', key: 'work_date', width: 100 },
   { title: 'Оператор', key: 'operator_name' },
   { title: 'Спецтехника', key: 'machinery_name' },
@@ -138,12 +173,17 @@ const columns = [
   { title: 'Часы', key: 'pay_hours', width: 80, render: (r: any) => r.pay_hours ? r.pay_hours.toFixed(1) : '—' },
   { title: 'Статус', key: 'status', width: 120, render: (r: any) => statusTag(r.status) },
   {
-    title: 'Действия', key: 'actions', width: 120,
+    title: 'Действия', key: 'actions', width: 180,
     render: (row: any) => {
+      const btns: any[] = []
       if (row.status === 'open') {
-        return h(NButton, { size: 'tiny', type: 'warning', onClick: () => openClose(row) }, () => 'Закрыть')
+        btns.push(h(NButton, { size: 'tiny', type: 'warning', onClick: () => openClose(row) }, () => 'Закрыть'))
       }
-      return null
+      if (row.status !== 'locked') {
+        btns.push(h(NButton, { size: 'tiny', onClick: () => startEditSession(row) }, () => '✎'))
+        btns.push(h(NButton, { size: 'tiny', type: 'error', onClick: () => deleteSession(row.id) }, () => '🗑'))
+      }
+      return h(NSpace, { size: 4 }, () => btns)
     },
   },
 ]
@@ -235,13 +275,51 @@ async function closeSession() {
   saving.value = false
 }
 
+async function startEditSession(row: any) {
+  editingSession.value = row
+  editForm.operator_id = row.operator_id
+  editForm.machinery_id = row.machinery_id
+  editForm.buyer_id = row.buyer_id
+  editForm.notes = row.notes || ''
+  editForm.hourly_rate = row.hourly_rate || 0
+  showEditModal.value = true
+}
+
+async function saveEditSession() {
+  saving.value = true
+  try {
+    await api.put(`/machinery-sessions/${editingSession.value.id}`, {
+      operator_id: editForm.operator_id,
+      machinery_id: editForm.machinery_id,
+      buyer_id: editForm.buyer_id,
+      notes: editForm.notes || null,
+      hourly_rate: editForm.hourly_rate,
+    })
+    msg.success('Сохранено')
+    showEditModal.value = false
+    await loadSessions()
+    await loadOpen()
+  } catch (e: any) { msg.error(e.response?.data?.detail || 'Ошибка') }
+  saving.value = false
+}
+
+async function deleteSession(id: number) {
+  dialog.error({
+    title: 'Удалить смену?',
+    content: 'Смена будет полностью удалена. Это действие нельзя отменить.',
+    positiveText: 'Удалить',
+    negativeText: 'Отмена',
+    onPositiveClick: async () => {
+      try { await api.delete(`/machinery-sessions/${id}`); msg.success('Удалено'); await loadSessions(); await loadOpen() }
+      catch (e: any) { msg.error(e.response?.data?.detail || 'Ошибка') }
+    },
+  })
+}
+
 // Watchers
 watch(() => createForm.machinery_id, async (newVal) => {
     tariffOptions.value = []
     createForm.tariff_id = null
-    // do NOT reset hourly_rate automatically if machinery changes? 
-    // maybe reset to 0 or keep what user typed? 
-    // let's reset to 0 to avoid confusion
     createForm.hourly_rate = 0 
     
     if (newVal) {

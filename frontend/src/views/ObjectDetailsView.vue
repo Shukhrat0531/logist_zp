@@ -30,8 +30,8 @@
                 </n-card>
             </n-gi>
             <n-gi>
-                <n-card size="small" style="border-left: 3px solid #f0a020">
-                    <div style="color: #666; font-size: 12px">Не закрыто</div>
+                <n-card size="small" style="border-left: 3px solid #f0a020; cursor: pointer" @click="loadMaterialBreakdown">
+                    <div style="color: #666; font-size: 12px">Не закрыто (нажмите для деталей)</div>
                     <div style="font-size: 18px; font-weight: bold">{{ pendingStats.trips_count }} рейсов</div>
                     <div style="font-size: 14px">{{ pendingStats.total_volume.toFixed(2) }} м³</div>
                 </n-card>
@@ -65,6 +65,17 @@
         </template>
     </n-modal>
 
+    <!-- Material Breakdown Modal -->
+    <n-modal v-model:show="showBreakdownModal" preset="dialog" title="Материалы (не закрытые рейсы)" style="width: 500px">
+      <div style="margin-bottom: 12px; font-size: 18px; font-weight: bold; text-align: center">
+        Общий объем: {{ pendingStats.total_volume.toFixed(2) }} м³
+      </div>
+      <n-data-table :columns="breakdownColumns" :data="materialBreakdown" size="small" bordered />
+      <template #action>
+        <n-button @click="showBreakdownModal = false">Закрыть</n-button>
+      </template>
+    </n-modal>
+
   </div>
 </template>
 
@@ -88,6 +99,8 @@ const pendingStats = ref({ trips_count: 0, total_volume: 0, total_amount: 0 })
 
 const showCloseModal = ref(false)
 const closeDateRange = ref<[number, number] | null>(null)
+const showBreakdownModal = ref(false)
+const materialBreakdown = ref<any[]>([])
 
 const totalVolume = computed(() => trips.value.reduce((s, t) => s + (t.volume_m3 || 0), 0))
 
@@ -100,8 +113,14 @@ const tripColumns = [
     { title: 'Объем (м³)', key: 'volume_m3', width: 100, render: (r: any) => r.volume_m3 ? Number(r.volume_m3).toFixed(2) : '—' },
 ]
 
+const breakdownColumns = [
+    { title: 'Материал', key: 'material_name' },
+    { title: 'Рейсов', key: 'trips_count', width: 80 },
+    { title: 'Объем (м³)', key: 'total_volume', width: 120, render: (r: any) => Number(r.total_volume).toFixed(2) },
+]
+
 const actColumns = [
-  { title: 'ID', key: 'id', width: 50 },
+  { title: '№', key: 'index', width: 50, render: (_: any, index: number) => index + 1 },
   { title: 'Дата', key: 'created_at', width: 150, render: (r: any) => new Date(r.created_at).toLocaleString() },
   { title: 'Период', key: 'period', render: (r: any) => `${r.start_date} — ${r.end_date}` },
   { title: 'Рейсов', key: 'total_trips', width: 80 },
@@ -189,6 +208,14 @@ async function deleteAct(id: number) {
         msg.success('Акт удален')
         await loadData()
     } catch { msg.error('Ошибка') }
+}
+
+async function loadMaterialBreakdown() {
+    try {
+        const res = await api.get(`/dashboard/objects/${route.params.id}/material-breakdown`)
+        materialBreakdown.value = res.data
+        showBreakdownModal.value = true
+    } catch { msg.error('Ошибка загрузки') }
 }
 
 onMounted(() => {

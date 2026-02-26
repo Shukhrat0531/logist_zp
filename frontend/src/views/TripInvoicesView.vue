@@ -100,7 +100,14 @@ const statusOptions = [
   { label: 'Заблокирован', value: 'locked' },
 ]
 
-const pagination = reactive({ page: 1, pageSize: 50, showSizePicker: true, pageSizes: [20, 50, 100] })
+const pagination = reactive({
+  page: 1,
+  pageSize: 50,
+  showSizePicker: true,
+  pageSizes: [20, 50, 100, 200],
+  onChange: (page: number) => { pagination.page = page },
+  onUpdatePageSize: (pageSize: number) => { pagination.pageSize = pageSize; pagination.page = 1 },
+})
 
 const form = reactive({
   trip_date: Date.now(),
@@ -122,7 +129,7 @@ function statusTag(status: string) {
 }
 
 const columns = [
-  { title: 'ID', key: 'id', width: 50 },
+  { title: '№', key: 'index', width: 50, render: (_: any, index: number) => index + 1 },
   { title: 'Дата', key: 'trip_date', width: 100 },
   { title: 'Водитель', key: 'driver_name' },
   { title: 'Машина', key: 'vehicle_plate', width: 110 },
@@ -133,15 +140,17 @@ const columns = [
   { title: 'Цена', key: 'trip_price_fixed', width: 100, render: (r: any) => h('span', `${Number(r.trip_price_fixed).toLocaleString()}`) },
   { title: 'Статус', key: 'status', width: 120, render: (r: any) => statusTag(r.status) },
   {
-    title: 'Действия', key: 'actions', width: 180,
+    title: 'Действия', key: 'actions', width: 220,
     render: (row: any) => {
       const btns: any[] = []
       if (row.status === 'draft') {
-        btns.push(h(NButton, { size: 'tiny', type: 'success', style: 'margin-right:4px', onClick: () => confirmInvoice(row.id) }, () => '✓'))
+        btns.push(h(NButton, { size: 'tiny', type: 'success', onClick: () => confirmInvoice(row.id) }, () => '✓'))
+      }
+      if (row.status === 'draft' || row.status === 'confirmed') {
         btns.push(h(NButton, { size: 'tiny', onClick: () => startEdit(row) }, () => '✎'))
       }
-      if (row.status !== 'void' && row.status !== 'locked') {
-        btns.push(h(NButton, { size: 'tiny', type: 'error', style: 'margin-left:4px', onClick: () => voidInvoice(row.id) }, () => '✗'))
+      if (row.status !== 'locked') {
+        btns.push(h(NButton, { size: 'tiny', type: 'error', onClick: () => deleteInvoice(row.id) }, () => '🗑'))
       }
       return h(NSpace, { size: 4 }, () => btns)
     },
@@ -270,6 +279,19 @@ async function voidInvoice(id: number) {
     negativeText: 'Нет',
     onPositiveClick: async () => {
       try { await api.post(`/trip-invoices/${id}/void`); msg.success('Аннулировано'); await loadInvoices() }
+      catch (e: any) { msg.error(e.response?.data?.detail || 'Ошибка') }
+    },
+  })
+}
+
+async function deleteInvoice(id: number) {
+  dialog.error({
+    title: 'Удалить накладную?',
+    content: 'Накладная будет полностью удалена. Это действие нельзя отменить.',
+    positiveText: 'Удалить',
+    negativeText: 'Отмена',
+    onPositiveClick: async () => {
+      try { await api.delete(`/trip-invoices/${id}`); msg.success('Удалено'); await loadInvoices() }
       catch (e: any) { msg.error(e.response?.data?.detail || 'Ошибка') }
     },
   })

@@ -16,6 +16,12 @@ async def lifespan(app: FastAPI):
     # Create tables on startup (dev convenience; use alembic in production)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Add new columns that create_all won't add to existing tables
+        await conn.execute(
+            __import__('sqlalchemy').text(
+                "ALTER TABLE machinery_sessions ADD COLUMN IF NOT EXISTS fuel_liters NUMERIC(10, 2)"
+            )
+        )
 
     # Run seed
     from app.services.seed import run_seed

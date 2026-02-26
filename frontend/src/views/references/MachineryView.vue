@@ -62,7 +62,7 @@ const loadingTariffs = ref(false)
 const newTariff = reactive({ name: '', rate: 0 })
 
 const columns = [
-  { title: 'ID', key: 'id', width: 60 },
+  { title: '№', key: 'index', width: 60, render: (_: any, index: number) => index + 1 },
   { title: 'Название', key: 'name' },
   { title: 'Статус', key: 'is_active', width: 100, render: (row: any) => h(NTag, { type: row.is_active ? 'success' : 'default', size: 'small' }, () => row.is_active ? 'Активен' : 'Неактивен') },
   { 

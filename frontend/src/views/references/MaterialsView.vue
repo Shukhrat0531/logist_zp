@@ -29,7 +29,7 @@ const editItem = ref<any>(null)
 const form = reactive({ name: '', is_active: true })
 
 const columns = [
-  { title: 'ID', key: 'id', width: 60 },
+  { title: '№', key: 'index', width: 60, render: (_: any, index: number) => index + 1 },
   { title: 'Название', key: 'name' },
   { title: 'Статус', key: 'is_active', width: 100, render: (row: any) => h(NTag, { type: row.is_active ? 'success' : 'default', size: 'small' }, () => row.is_active ? 'Активен' : 'Неактивен') },
   { title: 'Действия', key: 'actions', width: 120, render: (row: any) => auth.isAdmin ? h(NButton, { size: 'small', onClick: () => { editItem.value = row; form.name = row.name; form.is_active = row.is_active; showModal.value = true } }, () => 'Ред.') : null },

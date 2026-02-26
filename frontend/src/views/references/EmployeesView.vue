@@ -36,7 +36,7 @@ const typeOptions = [
 ]
 
 const columns = [
-  { title: 'ID', key: 'id', width: 60 },
+  { title: '№', key: 'index', width: 60, render: (_: any, index: number) => index + 1 },
   { title: 'ФИО', key: 'full_name' },
   { title: 'Тип', key: 'employee_type', width: 120, render: (row: any) => h(NTag, { type: row.employee_type === 'driver' ? 'info' : 'warning', size: 'small' }, () => row.employee_type === 'driver' ? 'Водитель' : 'Оператор') },
   { title: 'Статус', key: 'is_active', width: 100, render: (row: any) => h(NTag, { type: row.is_active ? 'success' : 'default', size: 'small' }, () => row.is_active ? 'Активен' : 'Неактивен') },

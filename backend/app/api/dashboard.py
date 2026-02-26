@@ -147,6 +147,84 @@ async def get_gsm_vehicle_history(
     ]
 
 
+@router.get("/gsm-machinery-report")
+async def get_gsm_machinery_report(
+    date_from: date = Query(...),
+    date_to: date = Query(...),
+    db: AsyncSession = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    from app.models.reference import Machinery
+    query = (
+        select(
+            MachinerySession.machinery_id,
+            Machinery.name.label("machinery_name"),
+            Employee.full_name.label("operator_name"),
+            func.sum(MachinerySession.fuel_liters).label("total_fuel"),
+            func.count(MachinerySession.id).label("sessions_count"),
+        )
+        .join(Machinery, MachinerySession.machinery_id == Machinery.id)
+        .outerjoin(Employee, MachinerySession.operator_id == Employee.id)
+        .where(
+            MachinerySession.work_date >= date_from,
+            MachinerySession.work_date <= date_to,
+            MachinerySession.fuel_liters.isnot(None),
+            MachinerySession.fuel_liters > 0,
+        )
+        .group_by(MachinerySession.machinery_id, Machinery.name, Employee.full_name)
+        .order_by(Machinery.name)
+    )
+    rows = (await db.execute(query)).all()
+    return [
+        {
+            "machinery_id": r.machinery_id,
+            "machinery_name": r.machinery_name,
+            "operator_name": r.operator_name or "—",
+            "total_fuel": float(r.total_fuel or 0),
+            "sessions_count": r.sessions_count,
+        }
+        for r in rows
+    ]
+
+
+@router.get("/gsm-machinery-history")
+async def get_gsm_machinery_history(
+    machinery_id: int = Query(...),
+    date_from: date = Query(...),
+    date_to: date = Query(...),
+    db: AsyncSession = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    query = (
+        select(
+            MachinerySession.work_date,
+            MachinerySession.fuel_liters,
+            Employee.full_name.label("operator_name"),
+            Buyer.name.label("buyer_name"),
+        )
+        .outerjoin(Employee, MachinerySession.operator_id == Employee.id)
+        .outerjoin(Buyer, MachinerySession.buyer_id == Buyer.id)
+        .where(
+            MachinerySession.machinery_id == machinery_id,
+            MachinerySession.work_date >= date_from,
+            MachinerySession.work_date <= date_to,
+            MachinerySession.fuel_liters.isnot(None),
+            MachinerySession.fuel_liters > 0,
+        )
+        .order_by(MachinerySession.work_date.desc())
+    )
+    rows = (await db.execute(query)).all()
+    return [
+        {
+            "trip_date": str(r.work_date),
+            "fuel_liters": float(r.fuel_liters),
+            "driver_name": r.operator_name or "—",
+            "buyer_name": r.buyer_name or "—",
+        }
+        for r in rows
+    ]
+
+
 @router.get("/objects-stats", response_model=list[ObjectStatsItem])
 async def get_objects_stats(
     date_from: date | None = None,
@@ -261,4 +339,37 @@ async def get_object_pending_stats(
         "total_volume": float(row[1] or 0),
         "total_amount": float(row[2] or 0),
     }
+
+
+@router.get("/objects/{id}/material-breakdown")
+async def get_material_breakdown(
+    id: int,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    from app.models.reference import Material
+    query = (
+        select(
+            Material.name.label("material_name"),
+            func.sum(TripInvoice.volume_m3).label("total_volume"),
+            func.count(TripInvoice.id).label("trips_count"),
+        )
+        .outerjoin(Material, TripInvoice.material_id == Material.id)
+        .where(
+            TripInvoice.buyer_id == id,
+            TripInvoice.status == TripStatus.confirmed,
+            TripInvoice.delivery_act_id.is_(None),
+        )
+        .group_by(Material.name)
+        .order_by(func.sum(TripInvoice.volume_m3).desc())
+    )
+    rows = (await db.execute(query)).all()
+    return [
+        {
+            "material_name": r.material_name or "Без материала",
+            "total_volume": float(r.total_volume or 0),
+            "trips_count": r.trips_count,
+        }
+        for r in rows
+    ]
 

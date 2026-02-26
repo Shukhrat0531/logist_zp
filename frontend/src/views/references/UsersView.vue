@@ -36,7 +36,7 @@ const roleOptions = [
 ]
 
 const columns = [
-  { title: 'ID', key: 'id', width: 60 },
+  { title: '№', key: 'index', width: 60, render: (_: any, index: number) => index + 1 },
   { title: 'Логин', key: 'username' },
   { title: 'Имя', key: 'full_name' },
   { title: 'Роль', key: 'role', width: 130, render: (row: any) => h(NTag, { type: row.role === 'admin' ? 'error' : row.role === 'dispatcher' ? 'info' : 'success', size: 'small' }, () => row.role) },

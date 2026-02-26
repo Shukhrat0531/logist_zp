@@ -76,3 +76,19 @@ async def void_invoice(
     invoice = await void_trip_invoice(db, id, user)
     await db.commit()
     return invoice
+
+
+@router.delete("/{id}")
+async def delete_invoice(
+    id: int,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_roles(UserRole.admin)),
+):
+    from app.models.trip_invoice import TripInvoice
+    from fastapi import HTTPException
+    invoice = await db.get(TripInvoice, id)
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    await db.delete(invoice)
+    await db.commit()
+    return {"ok": True}

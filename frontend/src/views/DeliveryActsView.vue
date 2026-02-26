@@ -53,7 +53,7 @@ const filters = reactive({ dateRange: null as any, buyer_id: null as number | nu
 const form = reactive({ buyer_id: null as number | null, dateRange: null as any })
 
 const columns = [
-  { title: 'ID', key: 'id', width: 50 },
+  { title: '№', key: 'index', width: 50, render: (_: any, index: number) => index + 1 },
   { title: 'Дата акта', key: 'act_date', width: 100 },
   { title: 'Закупщик', key: 'buyer_name' },
   { title: 'Период', key: 'period', render: (r: any) => `${r.date_from} — ${r.date_to}` },

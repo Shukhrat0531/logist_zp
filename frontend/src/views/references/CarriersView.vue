@@ -36,7 +36,7 @@ const editItem = ref<any>(null)
 const form = reactive({ name: '', price_per_trip: 0, is_active: true })
 
 const columns = [
-  { title: 'ID', key: 'id', width: 60 },
+  { title: '№', key: 'index', width: 60, render: (_: any, index: number) => index + 1 },
   { title: 'Название', key: 'name' },
   { title: 'Цена за рейс', key: 'price_per_trip', render: (row: any) => h('span', `${Number(row.price_per_trip).toLocaleString()} ₸`) },
   { title: 'Статус', key: 'is_active', width: 100, render: (row: any) => h(NTag, { type: row.is_active ? 'success' : 'default', size: 'small' }, () => row.is_active ? 'Активен' : 'Неактивен') },

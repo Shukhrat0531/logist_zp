@@ -53,7 +53,7 @@ const places = ref<any[]>([])
 const newPlaceName = ref('')
 
 const columns = [
-  { title: 'ID', key: 'id', width: 60 },
+  { title: '№', key: 'index', width: 60, render: (_: any, index: number) => index + 1 },
   { title: 'Название', key: 'name' },
   { title: 'Статус', key: 'is_active', width: 100, render: (row: any) => h(NTag, { type: row.is_active ? 'success' : 'default', size: 'small' }, () => row.is_active ? 'Активен' : 'Неактивен') },
   { title: 'Действия', key: 'actions', width: 200, render: (row: any) => {
@@ -67,7 +67,7 @@ const columns = [
 ]
 
 const placeColumns = [
-  { title: 'ID', key: 'id', width: 50 },
+  { title: '№', key: 'index', width: 50, render: (_: any, index: number) => index + 1 },
   { title: 'Название', key: 'name' },
   { title: '', key: 'actions', width: 60, render: (row: any) => h(NButton, { size: 'tiny', type: 'error', onClick: () => deletePlace(row.id) }, () => '✗') },
 ]

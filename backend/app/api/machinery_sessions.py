@@ -68,3 +68,19 @@ async def close_mach_session(
     s = await close_session(db, id, data, user)
     await db.commit()
     return s
+
+
+@router.delete("/{id}")
+async def delete_mach_session(
+    id: int,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_roles(UserRole.admin)),
+):
+    from app.models.machinery_session import MachinerySession
+    from fastapi import HTTPException
+    session = await db.get(MachinerySession, id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    await db.delete(session)
+    await db.commit()
+    return {"ok": True}
