@@ -70,6 +70,9 @@
         <n-form-item label="Конец">
           <n-date-picker v-model:value="closeEndAt" type="datetime" style="width: 100%" />
         </n-form-item>
+        <n-form-item label="Солярка (л)">
+          <n-input-number v-model:value="closeFuelLiters" :min="0" :precision="1" placeholder="Необязательно" style="width: 100%" />
+        </n-form-item>
       </n-form>
       <template #action>
         <n-button @click="showCloseModal = false">Отмена</n-button>
@@ -93,6 +96,7 @@ const showCreateModal = ref(false)
 const showCloseModal = ref(false)
 const closingSession = ref<any>(null)
 const closeEndAt = ref(Date.now())
+const closeFuelLiters = ref<number | null>(null)
 
 const operatorOptions = ref<any[]>([])
 const machineryOptions = ref<any[]>([])
@@ -155,6 +159,7 @@ function openCreate() {
 function openClose(session: any) {
   closingSession.value = session
   closeEndAt.value = Date.now()
+  closeFuelLiters.value = null
   showCloseModal.value = true
 }
 
@@ -218,6 +223,7 @@ async function closeSession() {
   try {
     await api.post(`/machinery-sessions/${closingSession.value.id}/close`, {
       end_at: new Date(closeEndAt.value).toISOString(),
+      fuel_liters: closeFuelLiters.value || null,
     })
     msg.success('Смена закрыта')
     showCloseModal.value = false

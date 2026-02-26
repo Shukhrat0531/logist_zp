@@ -18,7 +18,7 @@ def build_payroll_excel(lines: list[dict], period_id: int) -> io.BytesIO:
         bottom=Side(style="thin"),
     )
 
-    headers = ["№", "Сотрудник", "Тип", "Рейсов", "Сумма рейсов", "Часов", "Сумма часов", "Итого"]
+    headers = ["№", "Сотрудник", "Тип", "Рейсов", "Сумма рейсов", "Часов", "Сумма часов", "Итого", "Авансы", "К выплате"]
     ws.append(headers)
 
     for col_idx, _ in enumerate(headers, 1):
@@ -30,6 +30,10 @@ def build_payroll_excel(lines: list[dict], period_id: int) -> io.BytesIO:
 
     for i, line in enumerate(lines, 1):
         emp_type = "Водитель" if line["employee_type"] == "driver" else "Оператор"
+        advances = float(line.get("advances_amount", 0))
+        total = float(line["total_amount"])
+        correction = float(line.get("manual_correction", 0))
+        payable = total + correction - advances
         row = [
             i,
             line.get("employee_name", ""),
@@ -38,7 +42,9 @@ def build_payroll_excel(lines: list[dict], period_id: int) -> io.BytesIO:
             line["trips_amount"],
             line["hours_total"],
             line["hours_amount"],
-            line["total_amount"],
+            total,
+            advances,
+            payable,
         ]
         ws.append(row)
         for col_idx in range(1, len(row) + 1):
@@ -49,7 +55,17 @@ def build_payroll_excel(lines: list[dict], period_id: int) -> io.BytesIO:
     ws.cell(row=total_row, column=2, value="ИТОГО").font = Font(bold=True)
     ws.cell(row=total_row, column=5, value=sum(l["trips_amount"] for l in lines)).font = Font(bold=True)
     ws.cell(row=total_row, column=7, value=sum(l["hours_amount"] for l in lines)).font = Font(bold=True)
-    ws.cell(row=total_row, column=8, value=sum(l["total_amount"] for l in lines)).font = Font(bold=True)
+    ws.cell(row=total_row, column=8, value=sum(float(l["total_amount"]) for l in lines)).font = Font(bold=True)
+    ws.cell(row=total_row, column=9, value=sum(float(l.get("advances_amount", 0)) for l in lines)).font = Font(bold=True)
+
+    total_payable = sum(
+        float(l["total_amount"]) + float(l.get("manual_correction", 0)) - float(l.get("advances_amount", 0))
+        for l in lines
+    )
+    ws.cell(row=total_row, column=10, value=total_payable).font = Font(bold=True)
+
+    for col_idx in range(1, len(headers) + 1):
+        ws.cell(row=total_row, column=col_idx).border = thin_border
 
     # Column widths
     ws.column_dimensions["A"].width = 5
@@ -60,6 +76,8 @@ def build_payroll_excel(lines: list[dict], period_id: int) -> io.BytesIO:
     ws.column_dimensions["F"].width = 10
     ws.column_dimensions["G"].width = 15
     ws.column_dimensions["H"].width = 15
+    ws.column_dimensions["I"].width = 12
+    ws.column_dimensions["J"].width = 15
 
     buf = io.BytesIO()
     wb.save(buf)

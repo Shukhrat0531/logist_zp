@@ -303,6 +303,7 @@ class MachinerySessionCreate(BaseModel):
 
 class MachinerySessionClose(BaseModel):
     end_at: datetime
+    fuel_liters: Optional[float] = None
 
 class MachinerySessionUpdate(BaseModel):
     operator_id: Optional[int] = None

@@ -30,6 +30,7 @@ class MachinerySession(Base):
         Enum(SessionStatus), nullable=False, default=SessionStatus.open, index=True
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    fuel_liters: Mapped[float | None] = mapped_column(nullable=True)
     created_by: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False

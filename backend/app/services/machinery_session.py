@@ -58,6 +58,7 @@ async def close_session(db: AsyncSession, session_id: int, data: MachinerySessio
         raise HTTPException(status_code=400, detail="end_at must be after start_at")
 
     session.end_at = data.end_at
+    session.fuel_liters = data.fuel_liters
     session.status = SessionStatus.closed
     await db.flush()
     await db.refresh(session)
